@@ -16,15 +16,15 @@ class EmMysql2ConnectionPool
       @busy = true
       @query_text = sql(connection)
       q = connection.query @query_text, @opts
-      q.callback{ |result| succeed result, connection.affected_rows, &block }
+      q.callback{ |result| succeed result, connection.affected_rows, connection.last_id, &block }
       q.errback{  |error|  fail error, &block }
       return q
     rescue StandardError => error
       fail error, &block
     end
     
-    def succeed(result, affected_rows, &block)
-      @deferrable.succeed result, affected_rows
+    def succeed(result, affected_rows, last_id, &block)
+      @deferrable.succeed result, affected_rows, last_id
     rescue StandardError => error
       fail error
     ensure
@@ -81,7 +81,7 @@ class EmMysql2ConnectionPool
   
   def query(sql, opts={})
     deferrable = EM::DefaultDeferrableWithErrbacksAccessor.new
-    deferrable.callback{ |result,affected_rows| yield result, affected_rows } if block_given?
+    deferrable.callback{ |result,affected_rows,last_id| yield result, affected_rows, last_id } if block_given?
     deferrable.errback &@on_error if @on_error
     
     @query_queue.push Query.new(sql, opts, deferrable)

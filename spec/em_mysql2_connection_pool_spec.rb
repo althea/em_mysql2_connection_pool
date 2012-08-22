@@ -103,11 +103,11 @@ describe EmMysql2ConnectionPool do
       @connection_pool.query 'foobar'
     end
     describe "when a block is given" do
-      it "adds a callback with the result and the affected rows" do
+      it "adds a callback with the result, the affected rows and last id" do
         res = false
-        deferrable = @connection_pool.query('foobar'){|result,affected_rows| res = [result,affected_rows]}
-        deferrable.succeed :res, :rows
-        res.should == [:res, :rows]
+        deferrable = @connection_pool.query('foobar'){|result,affected_rows,last_id| res = [result,affected_rows,last_id]}
+        deferrable.succeed :res, :rows, :last_id
+        res.should == [:res, :rows, :last_id]
       end
     end
     describe "when a global on_error handler is set" do
@@ -129,7 +129,7 @@ describe EmMysql2ConnectionPool do
     before(:each) do
       @a_deferrable = EM::DefaultDeferrableWithErrbacksAccessor.new
       @query = EmMysql2ConnectionPool::Query.new :sql, :opts, @a_deferrable
-      @connection = stub(:a_connection, :query => @a_deferrable, :affected_rows => 1)
+      @connection = stub(:a_connection, :query => @a_deferrable, :affected_rows => 1, :last_id => 1234)
     end
     describe "#initialize" do
       it "assigns the query parts" do
@@ -185,9 +185,9 @@ describe EmMysql2ConnectionPool do
         it "calls the callback with the result and the affected rows" do
           res = false
           this_query = @query.execute(@connection){}
-          this_query.callback{|result,affected_rows| res = [result,affected_rows]}
+          this_query.callback{|result,affected_rows,last_id| res = [result,affected_rows,last_id]}
           this_query.succeed :res
-          res.should == [:res, 1]
+          res.should == [:res, 1, 1234]
         end
         it "ensures a given block is executed" do
           probe = false
